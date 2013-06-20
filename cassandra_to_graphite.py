@@ -19,9 +19,6 @@ class CassandraToGraphite:
     SKIP_URLS = ['java.lang:type=MemoryPool,name=Code Cache', 'java.lang:type=MemoryPool,name=Par Eden Space', 'java.lang:type=MemoryPool,name=Par Survivor Space', 'org.apache.cassandra.db:type=ColumnFamilies,keyspace=OpsCenter', 'org.apache.cassandra.db:type=ColumnFamilies,keyspace=system', 'Server:name=XSLTProcessor', 'system:name=http']
     
     metrics = 0
-    
-    GRAPHITE_HOST = None
-    GRAPHITE_PORT = None
         
     def sendMetric(self, name, value, time):
         metricsStr = name + " " + value + " " + time
