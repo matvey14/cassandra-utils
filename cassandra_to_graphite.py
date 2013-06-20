@@ -12,7 +12,7 @@ from string import maketrans
 class CassandraToGraphite:
     
     graphiteHost = None
-    graphitePort = None
+    graphitePort = 2003
     cassandraHost = '127.0.0.1'
     test = False
     
@@ -56,7 +56,7 @@ class CassandraToGraphite:
         self.sendMetricsFromXml(responseBody)
         
     def getPage(self, url):
-        host = self.CASSANDRA_HOST
+        host = self.cassandraHost
         conn = httplib.HTTPConnection(host, 8081)
         conn.request("GET", url)
         response = conn.getresponse()
@@ -67,6 +67,11 @@ class CassandraToGraphite:
         return responseBody
         
     def sendAllMetrics(self, url):
+        print "Graphite Host: " + self.graphiteHost
+        print "Graphite Port: " + self.graphitePort
+        print "Cassandra Host: " + self.cassandraHost
+        
+        
         xmlStr = self.getPage(url)
         
         root = ET.fromstring(xmlStr.strip())
@@ -106,8 +111,10 @@ def isNumber(s):
         return False
 
 def usage():
-    print "Usage: python cassandra_to_graphite.py -h <GRAPHITE_HOST> -p <GRAPHITE_PORT> [-c <CASSANDRA_HOST>]"
-    print "Example: python cassandra_to_graphite.py -h 56.56.56.56 -p 2003 -c 127.0.0.1"
+    print "Usage: python cassandra_to_graphite.py -h <GRAPHITE_HOST> [-p <GRAPHITE_PORT>] [-c <CASSANDRA_HOST>]\n"
+    print "Examples:"
+    print "python cassandra_to_graphite.py -h 56.56.56.56 -p 2003 -c 127.0.0.1"
+    print "python cassandra_to_graphite.py -h 56.56.56.56"
 
 def main():
     try:
@@ -120,16 +127,20 @@ def main():
     cassandraToGraphite = CassandraToGraphite()
     for o, a in opts:
         if o in ("-h", "--host"):
-            o.graphiteHost = a
+            cassandraToGraphite.graphiteHost = a
         elif o in ("-p", "--port"):
-            o.graphitePort = a
+            cassandraToGraphite.graphitePort = a
         elif o in ("-c", "--cassandrahost"):
-            o.cassandraHost = a
+            cassandraToGraphite.cassandraHost = a
         elif o in ("-t", "--test"):
-            o.test = True        
+            cassandraToGraphite.test = True        
         else:
             assert False, "unhandled option"
-            
+    
+    if (cassandraToGraphite.graphiteHost is None):
+        usage()
+        sys.exit(2)
+    
     url = "/serverbydomain?template=identity"
     cassandraToGraphite.sendAllMetrics(url)
 
