@@ -2,45 +2,37 @@ import xml.etree.ElementTree as ET
 import socket
 import httplib
 import urllib
-import sys
 import traceback
+import getopt
+import sys
 
 from datetime import datetime
 from string import maketrans
 
 class CassandraToGraphite:
     
-    GRAPHITE_HOST = None
-    GRAPHITE_PORT = None
+    graphiteHost = None
+    graphitePort = None
+    cassandraHost = '127.0.0.1'
+    test = False
     
     SKIP_URLS = ['java.lang:type=MemoryPool,name=Code Cache', 'java.lang:type=MemoryPool,name=Par Eden Space', 'java.lang:type=MemoryPool,name=Par Survivor Space', 'org.apache.cassandra.db:type=ColumnFamilies,keyspace=OpsCenter', 'org.apache.cassandra.db:type=ColumnFamilies,keyspace=system', 'Server:name=XSLTProcessor', 'system:name=http']
     
-    test = False
     metrics = 0
-    
-    def __init__(self):
-        self.initGraphite()
-
-    def initGraphite(self):
-        with open('/etc/graphitehost', 'r') as f:
-            self.GRAPHITE_HOST = f.read().rstrip()
-        
-        with open('/etc/graphiteport', 'r') as f:
-            self.GRAPHITE_PORT = int(f.read().rstrip())   
     
     GRAPHITE_HOST = None
     GRAPHITE_PORT = None
         
     def sendMetric(self, name, value, time):
-        str = name + " " + value + " " + time
+        metricsStr = name + " " + value + " " + time
         
-        if (not o.test):
+        if (not self.test):
             sock = socket.socket()
-            sock.connect((self.GRAPHITE_HOST, self.GRAPHITE_PORT))
-            sock.sendall(str)    
+            sock.connect((self.graphiteHost, self.graphitePort))
+            sock.sendall(metricsStr)    
             sock.close()
         
-        print str
+        print metricsStr
         self.metrics += 1
     
     def sendMetricsFromXml(self, xmlStr):
@@ -67,7 +59,7 @@ class CassandraToGraphite:
         self.sendMetricsFromXml(responseBody)
         
     def getPage(self, url):
-        host = "127.0.0.1"
+        host = self.CASSANDRA_HOST
         conn = httplib.HTTPConnection(host, 8081)
         conn.request("GET", url)
         response = conn.getresponse()
@@ -116,10 +108,34 @@ def isNumber(s):
     except ValueError:
         return False
 
-o = CassandraToGraphite()
-if len(sys.argv) > 1 and sys.argv[1] == "-test":
-    o.test = True
-    print "Running in test mode"
-url = "/serverbydomain?template=identity"
-o.sendAllMetrics(url)
+def usage():
+    print "Usage: python cassandra_to_graphite.py -h <GRAPHITE_HOST> -p <GRAPHITE_PORT> [-c <CASSANDRA_HOST>]"
+    print "Example: python cassandra_to_graphite.py -h 56.56.56.56 -p 2003 -c 127.0.0.1"
+
+def main():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "h:p:c:t", ["host=", "port=", "cassandrahost=", "test"])
+    except getopt.GetoptError as err:
+        print str(err)
+        usage()
+        sys.exit(2)
+
+    cassandraToGraphite = CassandraToGraphite()
+    for o, a in opts:
+        if o in ("-h", "--host"):
+            o.graphiteHost = a
+        elif o in ("-p", "--port"):
+            o.graphitePort = a
+        elif o in ("-c", "--cassandrahost"):
+            o.cassandraHost = a
+        elif o in ("-t", "--test"):
+            o.test = True        
+        else:
+            assert False, "unhandled option"
+            
+    url = "/serverbydomain?template=identity"
+    cassandraToGraphite.sendAllMetrics(url)
+
+if __name__ == "__main__":
+    main()
 
